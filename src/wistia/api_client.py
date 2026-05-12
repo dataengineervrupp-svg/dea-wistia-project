@@ -1,13 +1,11 @@
-import requests
-import boto3
-from botocore.exceptions import ClientError
-import json
-from datetime import datetime, timezone
-import pandas as pd
-from wistia.s3_io import object_exists
-
 class WistiaClient:
-        
+    import requests
+    import boto3
+    from botocore.exceptions import ClientError
+    import json
+    from datetime import datetime, timezone
+    import pandas as pd
+    
     def get_api_token(self):
         secret_name = "wistia-api-token"
         region_name = "us-east-2"
@@ -88,12 +86,7 @@ class WistiaClient:
         return all_events
 
     def get_visitors(self, BUCKET_NAME, visitor_ids:set[str]) -> list[dict]:
-        # IF SILVER VISITORS EXISTS, GET VISITOR IDs FROM IT AND REMOVE FROM VISITOR_IDS
-        visitors_silver_s3_key = 'silver/visitors'
-        if object_exists(BUCKET_NAME, visitors_silver_s3_key):
-            visitors_df = pd.read_parquet(f's3://{BUCKET_NAME}/{visitors_silver_s3_key}')
-            seen_visitors = set(visitors_df['visitor_id'])
-            visitor_ids.difference(seen_visitors)
+
         
         print(f'Acquiring information for {len(visitor_ids)} visitors')
         # GET VISITORS ONE AT A TIME        

@@ -60,8 +60,17 @@ def main():
     event_manifest_s3_key = f"manifests/events/{client.run_id}.json"
     write_json(BUCKET_NAME, event_manifest_s3_key, event_manifest_full)
 
-    # GET VISITORS
+    # VISITOR LOGIC
     print(f'Found a total of {len(visitor_id_set)} visitors')
+    
+    # IF SILVER VISITORS EXISTS, GET VISITOR IDs FROM IT AND REMOVE FROM VISITOR_ID_SET
+    visitors_silver_s3_key = 'silver/visitors'
+    if object_exists(BUCKET_NAME, visitors_silver_s3_key):
+        visitors_df = pd.read_parquet(f's3://{BUCKET_NAME}/{visitors_silver_s3_key}')
+        seen_visitors = set(visitors_df['visitor_id'])
+        visitor_ids.difference(seen_visitors)
+    
+    # GET VISITORS
     visitors = client.get_visitors(BUCKET_NAME, visitor_id_set)
 
     # SAVE VISITORS

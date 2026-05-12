@@ -1,11 +1,9 @@
-import boto3
-import json
-from botocore.exceptions import ClientError
-
-s3 = boto3.client("s3")
-
 def write_json(bucket: str, key: str, data: dict | list) -> None:
-    # s3_key = f"bronze/media/run_id={run_id}/media.json"
+    import boto3
+    import json
+    from botocore.exceptions import ClientError
+    s3 = boto3.client("s3")
+
     # Convert to JSON string
     json_body = json.dumps(data)
     # Write to S3
@@ -17,8 +15,8 @@ def write_json(bucket: str, key: str, data: dict | list) -> None:
     )
     print(f"Saved data to s3://{bucket}/{key}")
 
-
 def read_json(bucket: str, key: str, default=None):
+
     """
     Read a JSON file from S3 and return the parsed object.
     Parameters
@@ -34,6 +32,10 @@ def read_json(bucket: str, key: str, default=None):
     dict | list | any
         Parsed JSON object or default value
     """
+    import boto3
+    import json
+    from botocore.exceptions import ClientError
+    s3 = boto3.client("s3")
 
     try:
         response = s3.get_object(Bucket=bucket, Key=key)
@@ -65,6 +67,10 @@ def object_exists(bucket: str, key: str) -> bool:
     bool
         True if object exists, otherwise False
     """
+    import boto3
+    import json
+    from botocore.exceptions import ClientError
+    s3 = boto3.client("s3")
     try:
         s3.head_object(Bucket=bucket, Key=key)
         return True
