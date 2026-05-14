@@ -7,6 +7,7 @@ from wistia.config import BUCKET_NAME, BRONZE_EVENTS_PREFIX, BRONZE_MEDIA_PREFIX
 
 def main():
     import pandas as pd
+    from datetime import datetime, timedelta
     client = WistiaClient()
     
     # GET AND WRITE MEDIA
@@ -29,23 +30,45 @@ def main():
     # MEDIA ID SET
     media_id_set = set([m['hashed_id'] for m in media])
 
+    # GET EVENTS DATES FROM SILVER TABLE
+    SILVER_EVENTS_PATH = f"s3://{BUCKET_NAME}/silver/events/"
+    STATE_KEY = "state/events_state.json"
+    
+    end_date = datetime.date(datetime.now()) - timedelta(days=1)
+    if not object_exists(BUCKET_NAME, STATE_KEY) or not object_exists(BUCKET_NAME, SILVER_EVENTS_PATH):
+        start_date = '1900-01-01'
+        start_date = '2026-05-01'
+    else:
+        df_events = pd.read_parquet(SILVER_EVENTS_PATH)
+        eds = df_events['event_date'].astype('datetime64[ns]')
+        eds2 = eds.apply(lambda x: datetime.date(x))
+        start_date = eds2.max() + timedelta(days=1)
+        start_date = datetime.strftime(start_date, '%Y-%m-%d')
+    print('getting events from', start_date, 'to', end_date)
     # GET AND WRITE EVENTS WHILE SAVING UNIQUE VISITOR IDs
     visitor_id_set = set()
     event_manifest_full = []
+    earliest_event_date = None
+    most_recent_event_date = None
+    event_record_count = 0
     for media_id in list(media_id_set)[0:5]:
 
         # GET EVENTS FOR THIS MEDIA_ID
+        
         events_s3_key = f"{BRONZE_EVENTS_PREFIX}/run_id={client.run_id}/media_id={media_id}/events.json"
-        events = client.list_events_for_media(media_id)
-
+        events = client.list_events_for_media(media_id, start_date = start_date, end_date = end_date)
         # WRITE EVENTS TO S3
         if len(events) > 0:
             write_json(BUCKET_NAME, events_s3_key, events)
             print(f"Wrote {len(events)} events to S3.")
             visitor_id_set.update([e['visitor_key'] for e in events])
-        else:
-            print('No events for this piece of media. Nothing written.')
-
+            
+            event_dates = [datetime.fromisoformat(x['received_at'].replace("Z", "+00:00")) for x in events]
+            min_event_date = datetime.date(min(event_dates))
+            max_event_date = datetime.date(max(event_dates))
+            if earliest_event_date is None or min_event_date < earliest_event_date: earliest_event_date = min_event_date
+            if most_recent_event_date is None or max_event_date > most_recent_event_date: most_recent_event_date = max_event_date
+            event_record_count += len(events)
         # BUILD MANIFEST FOR THIS MEDIA_ID
         event_manifest = build_manifest(
             run_id = client.run_id,
@@ -56,7 +79,8 @@ def main():
             metadata = {"media_id":media_id, 'build_type':'test'}
         )
         event_manifest_full.extend([event_manifest])
-    
+    print('earliest date found is', earliest_event_date)
+    print('most recent date found is', most_recent_event_date)
     # SAVE EVENT MANIFEST
     event_manifest_s3_key = f"manifests/events/{client.run_id}.json"
     write_json(BUCKET_NAME, event_manifest_s3_key, event_manifest_full)
