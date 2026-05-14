@@ -7,6 +7,9 @@ class WistiaClient:
     import pandas as pd
     
     def get_api_token(self):
+        import boto3
+        from botocore.exceptions import ClientError
+        import json
         secret_name = "wistia-api-token"
         region_name = "us-east-2"
         session = boto3.session.Session()
@@ -24,6 +27,7 @@ class WistiaClient:
         return secret['API_TOKEN']
 
     def __init__(self):
+        from datetime import datetime, timezone
         self.token = self.get_api_token()
         self.run_id = datetime.now(timezone.utc).strftime("%Y-%m-%d")
         self.headers = {
@@ -34,6 +38,7 @@ class WistiaClient:
         self.timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H-%M-%SZ")
     
     def list_media(self) -> list[dict]:
+        import requests
         url = "https://api.wistia.com/modern/medias"
         all_media = []
         next_cursor = None
@@ -63,6 +68,7 @@ class WistiaClient:
 
 
     def list_events_for_media(self, media_id:str, start_date:str='2025-05-01', end_date:str='2025-05-31') -> list[dict]:
+        import requests
         all_events = []
         url = f"https://api.wistia.com/modern/stats/events"
         page = 1
@@ -86,8 +92,7 @@ class WistiaClient:
         return all_events
 
     def get_visitors(self, BUCKET_NAME, visitor_ids:set[str]) -> list[dict]:
-
-        
+        import requests        
         print(f'Acquiring information for {len(visitor_ids)} visitors')
         # GET VISITORS ONE AT A TIME        
         all_visitors = []

@@ -6,6 +6,7 @@ from wistia.manifest import build_manifest
 from wistia.config import BUCKET_NAME, BRONZE_EVENTS_PREFIX, BRONZE_MEDIA_PREFIX, BRONZE_VISITORS_PREFIX
 
 def main():
+    import pandas as pd
     client = WistiaClient()
     
     # GET AND WRITE MEDIA
@@ -68,13 +69,14 @@ def main():
     if object_exists(BUCKET_NAME, visitors_silver_s3_key):
         visitors_df = pd.read_parquet(f's3://{BUCKET_NAME}/{visitors_silver_s3_key}')
         seen_visitors = set(visitors_df['visitor_id'])
-        visitor_ids.difference(seen_visitors)
+        visitor_id_set.difference(seen_visitors)
     
     # GET VISITORS
     visitors = client.get_visitors(BUCKET_NAME, visitor_id_set)
 
     # SAVE VISITORS
-    visitors_s3_key = f'bronze/visitors/run_id={client.run_id}/visitors.json'
+    visitors_s3_key = f'{BRONZE_VISITORS_PREFIX}/run_id={client.run_id}/visitors.json'
+    # media_s3_key = f"{BRONZE_MEDIA_PREFIX}/run_id={client.run_id}/media.json"
     write_json(BUCKET_NAME, visitors_s3_key, visitors)
 
     # BUILD VISITORS MANIFEST

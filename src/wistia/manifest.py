@@ -1,12 +1,12 @@
 from datetime import datetime, timezone
-
+from typing import Optional, Union
 def build_manifest(
     run_id: str,
     endpoint: str,
     record_count: int,
     status: str,
     s3_key: str,
-    metadata: dict | None = None
+    metadata: Optional[dict] = None
 ) -> dict:
     """
     Build a manifest record for pipeline auditing.

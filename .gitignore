@@ -1,7 +1,7 @@
 # my own stuff
 secrets_manager.py
 api_tests/*
-
+silver_tests/*
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]

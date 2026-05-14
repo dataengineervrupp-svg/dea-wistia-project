@@ -1,4 +1,5 @@
-def write_json(bucket: str, key: str, data: dict | list) -> None:
+from typing import Optional, Union
+def write_json(bucket: str, key: str, data: Union[dict, list]) -> None:
     import boto3
     import json
     from botocore.exceptions import ClientError
