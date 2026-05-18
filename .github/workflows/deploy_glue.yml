@@ -1,0 +1,49 @@
+name: Deploy Wistia Glue Code
+
+on:
+  push:
+    branches: [main]
+
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install build and test tools
+        run: |
+          python -m pip install --upgrade pip
+          pip install build pytest
+
+      - name: Run tests
+        run: |
+          pytest
+
+      - name: Build wheel
+        run: |
+          python -m build
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: us-east-2
+          role-to-assume: ${{ secrets.AWS_GITHUB_ACTIONS_ROLE_ARN }}
+
+      - name: Upload Glue artifacts to S3
+        run: |
+          aws s3 cp dist/*.whl s3://wistia-467875655273-us-east-2-an/deploy/packages/
+          aws s3 cp src/wistia_ingest_2.py s3://wistia-467875655273-us-east-2-an/deploy/scripts/
+          # aws s3 cp glue_jobs/ s3://wistia-467875655273-us-east-2-an/deploy/scripts/ --recursive
