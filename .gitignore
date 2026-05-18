@@ -1,7 +1,12 @@
 # my own stuff
 secrets_manager.py
 api_tests/*
+api_tests
 silver_tests/*
+silver_tests
+github_action.yml
+.github/*
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]

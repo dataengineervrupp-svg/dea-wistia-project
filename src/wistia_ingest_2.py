@@ -1,10 +1,3 @@
-from wistia.api_client import WistiaClient
-from wistia.s3_io import write_json, read_json, object_exists
-from wistia.manifest import build_manifest
-# from wistia.state import read_state, write_state
-
-from wistia.config import BUCKET_NAME, BRONZE_EVENTS_PREFIX, BRONZE_MEDIA_PREFIX, BRONZE_VISITORS_PREFIX
-
 '''
 Project Flow
 
@@ -27,6 +20,37 @@ Silver media will be a full reload from the most recent run_id obtained from the
 dim_media and dim_media_engagement should require no changes
 
 '''
+
+try:
+    from wistia.api_client import WistiaClient
+    print("WistiaClient available, using")
+except Exception as e:
+    print("wistia api_client not found, obtaining whl from S3")
+    import sys
+    import subprocess
+    import boto3
+
+    BUCKET = "wistia-467875655273-us-east-2-an"
+    WHEEL_KEY = "deploy/packages/wistia-0.1.0-py3-none-any.whl"
+    LOCAL_WHEEL = "/tmp/wistia-0.1.0-py3-none-any.whl"
+
+    s3 = boto3.client("s3")
+    s3.download_file(BUCKET, WHEEL_KEY, LOCAL_WHEEL)
+
+    subprocess.check_call([
+        sys.executable,
+        "-m",
+        "pip",
+        "install",
+        "--no-deps",
+        LOCAL_WHEEL
+    ])
+from wistia.api_client import WistiaClient
+from wistia.s3_io import write_json, read_json, object_exists
+from wistia.manifest import build_manifest
+
+from wistia.config import BUCKET_NAME, BRONZE_EVENTS_PREFIX, BRONZE_MEDIA_PREFIX, BRONZE_VISITORS_PREFIX
+
 
 def main():
     import pandas as pd
@@ -62,7 +86,7 @@ def main():
     medias_to_get = len(media)
     yesterday = datetime.date(datetime.now(tz=timezone.utc)) - timedelta(days=1)
     # START_DATE FOR API CALL IS DEFAULT TWO YEARS AGO
-    for media_id in list(media_id_set)[0:15]:
+    for media_id in list(media_id_set)[0:1]:
         start_date = datetime.strptime(client.run_id, "%Y-%m-%d") - timedelta(days=730)
 
         # START_DATE WILL NEVER BE LESS THAN THE MEDIA CREATED DATE
