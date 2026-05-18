@@ -5,9 +5,28 @@ from wistia.manifest import build_manifest
 
 from wistia.config import BUCKET_NAME, BRONZE_EVENTS_PREFIX, BRONZE_MEDIA_PREFIX, BRONZE_VISITORS_PREFIX
 
+'''
+Project Flow
+
+Get all media
+    current run_id structure is fine
+    but add check that if the run_id folder already exists, get the media_ids from the media.json
+
+For each media_id:
+    Ping event media manifest to see what was the most recent date for which events were saved
+    For each date between most-recently-retrieved and yesterday:
+        Get events page-by-page
+        Save each page as events/media_id=.../page_n.json
+
+Don't need visitors at all since dim_visitor comes from events
+
+Silver events will append only dates that are beyond its current range
+
+'''
+
 def main():
     import pandas as pd
-    from datetime import datetime, timedelta
+    from datetime import datetime, timedelta, timezone
     client = WistiaClient()
     
     # GET AND WRITE MEDIA
@@ -37,7 +56,7 @@ def main():
     end_date = datetime.date(datetime.now()) - timedelta(days=1)
     if not object_exists(BUCKET_NAME, STATE_KEY) or not object_exists(BUCKET_NAME, SILVER_EVENTS_PATH):
         start_date = '1900-01-01'
-        start_date = '2026-05-01'
+        # start_date = '2026-05-01'
     else:
         df_events = pd.read_parquet(SILVER_EVENTS_PATH)
         eds = df_events['event_date'].astype('datetime64[ns]')
@@ -51,16 +70,18 @@ def main():
     earliest_event_date = None
     most_recent_event_date = None
     event_record_count = 0
+    medias_to_get = len(media_id_set)
     for media_id in list(media_id_set)[0:5]:
-
+        print('medias still to get:', medias_to_get)
+        medias_to_get = medias_to_get - 1
         # GET EVENTS FOR THIS MEDIA_ID
         
         events_s3_key = f"{BRONZE_EVENTS_PREFIX}/run_id={client.run_id}/media_id={media_id}/events.json"
         events = client.list_events_for_media(media_id, start_date = start_date, end_date = end_date)
         # WRITE EVENTS TO S3
         if len(events) > 0:
-            write_json(BUCKET_NAME, events_s3_key, events)
-            print(f"Wrote {len(events)} events to S3.")
+            # write_json(BUCKET_NAME, events_s3_key, events)
+            # print(f"Wrote {len(events)} events to S3.")
             visitor_id_set.update([e['visitor_key'] for e in events])
             
             event_dates = [datetime.fromisoformat(x['received_at'].replace("Z", "+00:00")) for x in events]
@@ -83,7 +104,18 @@ def main():
     print('most recent date found is', most_recent_event_date)
     # SAVE EVENT MANIFEST
     event_manifest_s3_key = f"manifests/events/{client.run_id}.json"
-    write_json(BUCKET_NAME, event_manifest_s3_key, event_manifest_full)
+    # write_json(BUCKET_NAME, event_manifest_s3_key, event_manifest_full)
+
+
+    # SAVE EVENTS STATE FILE
+    state_payload = {
+        "silver_events_path": SILVER_EVENTS_PATH,
+        "earliest_event_date": datetime.strftime(earliest_event_date, '%Y-%m-%d'),
+        "most_recent_event_date": datetime.strftime(most_recent_event_date, '%Y-%m-%d'),
+        "event_record_count": event_record_count,
+        "updated_at_utc": datetime.now(timezone.utc).isoformat()
+    }
+    # write_json(BUCKET_NAME, STATE_KEY, state_payload)
 
     # VISITOR LOGIC
     print(f'Found a total of {len(visitor_id_set)} visitors')

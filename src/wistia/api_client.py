@@ -5,6 +5,8 @@ class WistiaClient:
     import json
     from datetime import datetime, timezone
     import pandas as pd
+
+    s3 = boto3.client("s3")
     
     def get_api_token(self):
         import boto3
@@ -67,29 +69,20 @@ class WistiaClient:
         return all_media
 
 
-    def list_events_for_media(self, media_id:str, start_date:str='2025-05-01', end_date:str='2025-05-31') -> list[dict]:
+    def list_events_for_media(self, media_id:str, start_date:str='2025-05-01', page:int=1) -> list[dict]:
         import requests
-        all_events = []
         url = f"https://api.wistia.com/modern/stats/events"
-        page = 1
-        while True:
-            params = {
+        params = {
                 'media_id':media_id,
                 'per_page':100,
                 'page':page,
                 'start_date':start_date,
-                'end_date':end_date
-            }
-            print(f"Requesting page {page} of events for media_id {media_id}")
-            response = requests.get(url, headers=self.headers, params=params)
-            
-            events_data = response.json()
-            if len(events_data) == 0:
-                break
-            
-            all_events.extend(events_data)
-            page += 1
-        return all_events
+                'end_date':start_date
+        }
+        print(f"Requesting page {page} of events for media_id {media_id}")
+        response = requests.get(url, headers=self.headers, params=params)
+        events_data = response.json()            
+        return events_data
 
     def get_visitors(self, BUCKET_NAME, visitor_ids:set[str]) -> list[dict]:
         import requests        
